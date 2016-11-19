@@ -46,7 +46,7 @@ def estimate_center(image, threshold=50):
     return y1, x1
 
 # remember to set default hough_radii when known
-def estimate_center_h(img,hough_radii, sig_gauss=5,thresh_factor=0.90):
+def estimate_center_h(img,hough_radii, sig_gauss=5,thresh_factor=0.95):
     # Can this be done as a pipeline??
     img_sobel = skimage.filters.sobel(skimage.filters.gaussian(img,sigma=sig_gauss))
 
@@ -67,12 +67,24 @@ def estimate_center_h(img,hough_radii, sig_gauss=5,thresh_factor=0.90):
     # Be very much aware of order of coordinates, is "y,  x, radius" better?
     return x, y, radius
 
+# temp for problem solving
+def estimate_center_h_extra_output(img,hough_radii, sig_gauss=5,thresh_factor=0.95):
+    # Can this be done as a pipeline??
+    img_sobel = skimage.filters.sobel(skimage.filters.gaussian(img,sigma=sig_gauss))
 
+    my_sort = np.sort(np.ravel(img_sobel))
+    thresh = my_sort[int(my_sort.size*thresh_factor)]
+    
+    edges = img_sobel>thresh # make sure threshold is valid
+    
+    # Hough transform - 3D matrix w. one 2D matrix per input radius
+    hough_res = skimage.transform.hough_circle(edges, hough_radii)
+    
 
-def plotStuff(img,y,x,radius=100):
-    imgGray = skimage.color.gray2rgb(img)
-    cx, cy = skimage.draw.circle_perimeter(y, x, radius)
-    imgGray[cy, cx] = (220, 20, 20)
-    plt.figure()
-    plt.imshow(imgGray)
-    plt.plot(y, x, '.', markersize=12)
+    
+    # find index of max point in hough_res
+    max_radius_index, y, x = np.unravel_index(hough_res.argmax(), hough_res.shape)
+    radius = hough_radii[max_radius_index]
+    
+    # Be very much aware of order of coordinates, is "y,  x, radius" better?
+    return x, y, radius, edges, hough_res
